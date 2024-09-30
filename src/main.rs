@@ -26,8 +26,15 @@ mod done {
         }
     }
 
-}
+    pub fn days_ago(start_date: DateTime<Utc>, num_days: i64) -> DateTime<Utc> {
+        let duration = Duration::days(num_days);
+        start_date - duration
+    }
 
+    pub fn weeks_ago(start_date: DateTime<Utc>, num_weeks: i64) -> DateTime<Utc> {
+        let duration = Duration::weeks(num_weeks);
+        start_date - duration
+    }
 
 fn main() {
     println!("Hello, world!");
