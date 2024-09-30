@@ -1,6 +1,11 @@
 
 mod done {
     use core::fmt;
+    use std::{
+        fs::{File, OpenOptions},
+        io::{self, BufRead, Write},
+        path::Path,
+    };
 
     use chrono::{DateTime, Duration, Utc};
     use regex::Regex;
@@ -49,6 +54,14 @@ mod done {
         return parsed;
     }
 
+    fn read_lines<P>(filename: P) -> io::Result<io::Lines<io::BufReader<File>>>
+    where
+        P: AsRef<Path>,
+    {
+        let file = File::open(filename)?;
+        Ok(io::BufReader::new(file).lines())
+    }
+
     pub fn days_ago(start_date: DateTime<Utc>, num_days: i64) -> DateTime<Utc> {
         let duration = Duration::days(num_days);
         start_date - duration
@@ -58,6 +71,19 @@ mod done {
         let duration = Duration::weeks(num_weeks);
         start_date - duration
     }
+
+    pub fn get(path: &Path, completed_since: DateTime<Utc>) -> Vec<CompletedItem> {
+        if let Ok(lines) = read_lines(path) {
+            let items = lines
+                .flat_map(|item| item.map(|i| try_parse(&i)))
+                .filter(|r| r.as_ref().is_ok_and(|ci| ci.completed > completed_since))
+                .map(|r| r.unwrap())
+                .collect::<Vec<_>>();
+            return items;
+        }
+        return Vec::new();
+    }
+
 
 fn main() {
     println!("Hello, world!");
