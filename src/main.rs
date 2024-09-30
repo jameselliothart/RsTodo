@@ -3,6 +3,7 @@ mod done {
     use core::fmt;
 
     use chrono::{DateTime, Duration, Utc};
+    use regex::Regex;
 
     pub struct CompletedItem {
         pub completed: DateTime<Utc>,
@@ -24,6 +25,28 @@ mod done {
         pub fn now(item: String) -> Self {
             Self::new(item, None)
         }
+    }
+
+    fn try_parse(done_item: &str) -> Result<CompletedItem, String> {
+        let re = Regex::new(r"^\[(?<completedOn>.*)\] (?<item>.*)").unwrap();
+        let Some(captures) = re.captures(done_item) else {
+            return Err(format!(
+                "Unable to parse completed on timestamp and item from {}",
+                done_item
+            ));
+        };
+        let item = captures["item"].to_string();
+        let completed = captures["completedOn"].parse::<DateTime<Utc>>();
+        let parsed = completed.map_or_else(
+            |e| {
+                Err(format!(
+                    "Error parsing completed timestamp '{}': {}",
+                    &captures["completedOn"], e
+                ))
+            },
+            |completed| Ok(CompletedItem { completed, item }),
+        );
+        return parsed;
     }
 
     pub fn days_ago(start_date: DateTime<Utc>, num_days: i64) -> DateTime<Utc> {
