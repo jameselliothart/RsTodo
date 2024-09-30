@@ -84,6 +84,31 @@ mod done {
         return Vec::new();
     }
 
+    fn append_lines(path: &Path, lines: Vec<String>) -> io::Result<()> {
+        let mut file = OpenOptions::new()
+            .append(true)
+            .create(true) // Create the file if it doesn't exist
+            .open(path)?; // Return an error if unable to open
+
+        // Write the lines to the file with newline character
+        for line in lines {
+            writeln!(file, "{}", line)?;
+        }
+
+        Ok(())
+    }
+
+    pub fn save(path: &Path, completed_items: Vec<CompletedItem>) {
+        let lines = completed_items
+            .iter()
+            .map(|ci| ci.to_string())
+            .collect::<Vec<_>>();
+        append_lines(path, lines).expect(&format!(
+            "Should be able to write to file at path: '{:?}'",
+            path
+        ))
+    }
+}
 
 fn main() {
     println!("Hello, world!");
