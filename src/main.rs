@@ -77,15 +77,14 @@ mod done {
     }
 
     pub fn get(path: &Path, completed_since: DateTime<Utc>) -> Vec<CompletedItem> {
-        if let Ok(lines) = read_lines(path) {
-            let items = lines
-                .flat_map(|item| item.map(|i| try_parse(&i)))
-                .filter(|r| r.as_ref().is_ok_and(|ci| ci.completed > completed_since))
-                .map(|r| r.unwrap())
-                .collect::<Vec<_>>();
-            return items;
-        }
-        return Vec::new();
+        let items = read_lines(path)
+            .into_iter()
+            .flat_map(|lines| lines)
+            .filter_map(|line| line.ok())
+            .filter_map(|line| try_parse(&line).ok())
+            .filter(|ci| ci.completed > completed_since)
+            .collect();
+        items
     }
 
     fn append_lines(path: &Path, lines: Vec<String>) -> io::Result<()> {
@@ -113,6 +112,58 @@ mod done {
         ))
     }
 }
+
+/*
+// let result =
+// try
+//     s
+//     |> fun s -> Regex.Match(s, "^\[(?<completedOn>.*)\] (?<item>.*)")
+//     |> fun m -> if m.Success then Some m.Groups else None
+//     |> Option.map (
+//         fun g -> (
+//                     (g |> Seq.filter (fun x -> x.Name = "completedOn") |> Seq.exactlyOne).Value,
+//                     (g |> Seq.filter (fun x -> x.Name = "item") |> Seq.exactlyOne).Value
+//                 )
+//         )
+//     |> Option.map (fun (date, item) -> (DateTime.TryParse(date), item))
+//     |> Option.map (fun ((success, date), item) -> if success then Some (create date item) else None)
+// with
+// | :? ArgumentException -> None
+// match result with
+// | Some(Some(completedItem)) -> Some completedItem
+// | _ -> None
+
+// mod todo {
+//     struct Todo(usize, String);
+
+//     pub enum TodoList {
+//         Todos(Vec<Todo>),
+//         Nothing,
+//     }
+
+//     pub enum TodoEvent {
+//         TodoAddedEvent(String),
+//         TodosRemainingEvent(TodoList),
+//         TodosCompletedEvent(TodoList),
+//         TodosPurgedEvent(TodoList),
+//     }
+
+//     pub fn create(todos: &[&str]) -> TodoList {
+//         if todos.is_empty() {return TodoList::Nothing}
+//         let todos_vec = todos
+//             .iter()
+//             .enumerate()
+//             .map(|(index, item)| Todo(index, item.to_string()))
+//             .collect();
+//         TodoList::Todos(todos_vec)
+//     }
+
+//     pub fn value(Todo(_, item): Todo) -> String {item}
+//     pub fn index(Todo(index, _): Todo) -> usize {index}
+
+// }
+*/
+
 #[derive(Subcommand)]
 enum Commands {
     A { tasks: Vec<String> },
