@@ -1,3 +1,7 @@
+use std::path::Path;
+
+use chrono::Utc;
+use clap::{command, Parser, Subcommand};
 
 mod done {
     use core::fmt;
@@ -109,7 +113,45 @@ mod done {
         ))
     }
 }
+#[derive(Subcommand)]
+enum Commands {
+    A { tasks: Vec<String> },
+    D { days: i64 },
+    W { weeks: i64 },
+}
+
+#[derive(Parser)]
+#[command(name = "done")]
+#[command(about = "A simple command-line todo manager", long_about = None)]
+struct Cli {
+    #[command(subcommand)]
+    command: Commands,
+}
 
 fn main() {
-    println!("Hello, world!");
+    let path = Path::new("./done.txt");
+    let cli = Cli::parse();
+    match &cli.command {
+        Commands::A { tasks } => {
+            let items = tasks
+                .iter()
+                .map(|i| done::CompletedItem::now(i.to_string()))
+                .collect();
+            done::save(path, items)
+        }
+        Commands::D { days } => {
+            let completed_since = done::days_ago(Utc::now(), *days);
+            done::get(path, completed_since)
+                .iter()
+                .map(|x| x.to_string())
+                .for_each(|item| println!("{}", item));
+        }
+        Commands::W { weeks } => {
+            let completed_since = done::weeks_ago(Utc::now(), *weeks);
+            done::get(path, completed_since)
+                .iter()
+                .map(|x| x.to_string())
+                .for_each(|item| println!("{}", item));
+        }
+    }
 }
