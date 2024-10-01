@@ -5,14 +5,8 @@ use clap::{command, Parser, Subcommand};
 
 mod done {
     use core::fmt;
-    use std::{
-        fs::{File, OpenOptions},
-        io::{self, BufRead, Write},
-        path::Path,
-    };
 
     use chrono::{DateTime, Duration, Utc};
-    use regex::Regex;
 
     pub struct CompletedItem {
         pub completed: DateTime<Utc>,
@@ -36,36 +30,6 @@ mod done {
         }
     }
 
-    fn try_parse(done_item: &str) -> Result<CompletedItem, String> {
-        let re = Regex::new(r"^\[(?<completedOn>.*)\] (?<item>.*)").unwrap();
-        let Some(captures) = re.captures(done_item) else {
-            return Err(format!(
-                "Unable to parse completed on timestamp and item from {}",
-                done_item
-            ));
-        };
-        let item = captures["item"].to_string();
-        let completed = captures["completedOn"].parse::<DateTime<Utc>>();
-        let parsed = completed.map_or_else(
-            |e| {
-                Err(format!(
-                    "Error parsing completed timestamp '{}': {}",
-                    &captures["completedOn"], e
-                ))
-            },
-            |completed| Ok(CompletedItem { completed, item }),
-        );
-        return parsed;
-    }
-
-    fn read_lines<P>(filename: P) -> io::Result<io::Lines<io::BufReader<File>>>
-    where
-        P: AsRef<Path>,
-    {
-        let file = File::open(filename)?;
-        Ok(io::BufReader::new(file).lines())
-    }
-
     pub fn days_ago(start_date: DateTime<Utc>, num_days: i64) -> DateTime<Utc> {
         let duration = Duration::days(num_days);
         start_date - duration
@@ -76,40 +40,82 @@ mod done {
         start_date - duration
     }
 
-    pub fn get(path: &Path, completed_since: DateTime<Utc>) -> Vec<CompletedItem> {
-        let items = read_lines(path)
-            .into_iter()
-            .flat_map(|lines| lines)
-            .filter_map(|line| line.ok())
-            .filter_map(|line| try_parse(&line).ok())
-            .filter(|ci| ci.completed > completed_since)
-            .collect();
-        items
-    }
+    pub mod file {
+        use std::{
+            fs::{File, OpenOptions},
+            io::{self, BufRead, Write},
+            path::Path,
+        };
+        use chrono::{DateTime, Utc};
+        use regex::Regex;
 
-    fn append_lines(path: &Path, lines: Vec<String>) -> io::Result<()> {
-        let mut file = OpenOptions::new()
-            .append(true)
-            .create(true) // Create the file if it doesn't exist
-            .open(path)?; // Return an error if unable to open
+        use super::CompletedItem;
 
-        // Write the lines to the file with newline character
-        for line in lines {
-            writeln!(file, "{}", line)?;
+        fn try_parse(done_item: &str) -> Result<CompletedItem, String> {
+            let re = Regex::new(r"^\[(?<completedOn>.*)\] (?<item>.*)").unwrap();
+            let Some(captures) = re.captures(done_item) else {
+                return Err(format!(
+                    "Unable to parse completed on timestamp and item from {}",
+                    done_item
+                ));
+            };
+            let item = captures["item"].to_string();
+            let completed = captures["completedOn"].parse::<DateTime<Utc>>();
+            let parsed = completed.map_or_else(
+                |e| {
+                    Err(format!(
+                        "Error parsing completed timestamp '{}': {}",
+                        &captures["completedOn"], e
+                    ))
+                },
+                |completed| Ok(CompletedItem { completed, item }),
+            );
+            return parsed;
         }
 
-        Ok(())
-    }
+        fn read_lines<P>(filename: P) -> io::Result<io::Lines<io::BufReader<File>>>
+        where
+            P: AsRef<Path>,
+        {
+            let file = File::open(filename)?;
+            Ok(io::BufReader::new(file).lines())
+        }
 
-    pub fn save(path: &Path, completed_items: Vec<CompletedItem>) {
-        let lines = completed_items
-            .iter()
-            .map(|ci| ci.to_string())
-            .collect::<Vec<_>>();
-        append_lines(path, lines).expect(&format!(
-            "Should be able to write to file at path: '{:?}'",
-            path
-        ))
+        pub fn get(path: &Path, completed_since: DateTime<Utc>) -> Vec<CompletedItem> {
+            let items = read_lines(path)
+                .into_iter()
+                .flat_map(|lines| lines)
+                .filter_map(|line| line.ok())
+                .filter_map(|line| try_parse(&line).ok())
+                .filter(|ci| ci.completed > completed_since)
+                .collect();
+            items
+        }
+
+        fn append_lines(path: &Path, lines: Vec<String>) -> io::Result<()> {
+            let mut file = OpenOptions::new()
+                .append(true)
+                .create(true) // Create the file if it doesn't exist
+                .open(path)?; // Return an error if unable to open
+
+            // Write the lines to the file with newline character
+            for line in lines {
+                writeln!(file, "{}", line)?;
+            }
+
+            Ok(())
+        }
+
+        pub fn save(path: &Path, completed_items: Vec<CompletedItem>) {
+            let lines = completed_items
+                .iter()
+                .map(|ci| ci.to_string())
+                .collect::<Vec<_>>();
+            append_lines(path, lines).expect(&format!(
+                "Should be able to write to file at path: '{:?}'",
+                path
+            ))
+        }
     }
 }
 
@@ -188,18 +194,18 @@ fn main() {
                 .iter()
                 .map(|i| done::CompletedItem::now(i.to_string()))
                 .collect();
-            done::save(path, items)
+            done::file::save(path, items)
         }
         Commands::D { days } => {
             let completed_since = done::days_ago(Utc::now(), *days);
-            done::get(path, completed_since)
+            done::file::get(path, completed_since)
                 .iter()
                 .map(|x| x.to_string())
                 .for_each(|item| println!("{}", item));
         }
         Commands::W { weeks } => {
             let completed_since = done::weeks_ago(Utc::now(), *weeks);
-            done::get(path, completed_since)
+            done::file::get(path, completed_since)
                 .iter()
                 .map(|x| x.to_string())
                 .for_each(|item| println!("{}", item));
