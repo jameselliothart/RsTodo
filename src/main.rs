@@ -41,6 +41,7 @@ mod done {
     }
 
     pub mod db {
+        use sqlite::Connection;
         pub const DB_PATH: &str = "done.db";
 
         const SQL_CREATE_TABLE: &str = "
@@ -51,6 +52,14 @@ mod done {
                 )";
 
         const SQL_INSERT_ITEM: &str = "INSERT INTO CompletedItems (CompletedOn, Item) VALUES (?, ?)";
+
+        pub fn new_connection(db_path: &str) -> Connection {
+            return sqlite::open(db_path).expect(&format!("Should be able to open connection to db file at {}", db_path));
+        }
+
+        pub fn initialize(connection: &Connection) {
+            connection.execute(SQL_CREATE_TABLE).unwrap()
+        }
     }
 
     pub mod file {
