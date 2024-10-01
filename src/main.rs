@@ -40,6 +40,19 @@ mod done {
         start_date - duration
     }
 
+    pub mod db {
+        pub const DB_PATH: &str = "done.db";
+
+        const SQL_CREATE_TABLE: &str = "
+            CREATE TABLE IF NOT EXISTS CompletedItems (
+                Id INTEGER PRIMARY KEY,
+                CompletedOn TIMESTAMP,
+                Item VARCHAR(255)
+                )";
+
+        const SQL_INSERT_ITEM: &str = "INSERT INTO CompletedItems (CompletedOn, Item) VALUES (?, ?)";
+    }
+
     pub mod file {
         use std::{
             fs::{File, OpenOptions},
