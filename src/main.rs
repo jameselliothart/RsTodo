@@ -42,6 +42,9 @@ mod done {
 
     pub mod db {
         use sqlite::Connection;
+
+        use super::CompletedItem;
+
         pub const DB_PATH: &str = "done.db";
 
         const SQL_CREATE_TABLE: &str = "
@@ -59,6 +62,27 @@ mod done {
 
         pub fn initialize(connection: &Connection) {
             connection.execute(SQL_CREATE_TABLE).unwrap()
+        }
+
+        pub fn insert_item(connection: &Connection, completed_item: &CompletedItem) -> Result<(), sqlite::Error> {
+            let mut statement = connection.prepare(SQL_INSERT_ITEM)?;
+
+            // Bind the parameters: 1st index is ?, 2nd index is ?
+            statement.bind((1, completed_item.completed.to_rfc3339().as_str()))?;
+            statement.bind((2, completed_item.item.as_str()))?;
+
+            // Execute the statement
+            statement.next()?;
+            Ok(())
+        }
+
+        pub fn save(connection: Connection, completed_items: Vec<CompletedItem>) -> Vec<sqlite::Error> {
+            return completed_items
+                .iter()
+                .map(|ci| insert_item(&connection, ci))
+                .filter_map(|r| r.err())
+                .collect::<Vec<_>>()
+                ;
         }
     }
 
