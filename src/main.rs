@@ -119,57 +119,6 @@ mod done {
     }
 }
 
-/*
-// let result =
-// try
-//     s
-//     |> fun s -> Regex.Match(s, "^\[(?<completedOn>.*)\] (?<item>.*)")
-//     |> fun m -> if m.Success then Some m.Groups else None
-//     |> Option.map (
-//         fun g -> (
-//                     (g |> Seq.filter (fun x -> x.Name = "completedOn") |> Seq.exactlyOne).Value,
-//                     (g |> Seq.filter (fun x -> x.Name = "item") |> Seq.exactlyOne).Value
-//                 )
-//         )
-//     |> Option.map (fun (date, item) -> (DateTime.TryParse(date), item))
-//     |> Option.map (fun ((success, date), item) -> if success then Some (create date item) else None)
-// with
-// | :? ArgumentException -> None
-// match result with
-// | Some(Some(completedItem)) -> Some completedItem
-// | _ -> None
-
-// mod todo {
-//     struct Todo(usize, String);
-
-//     pub enum TodoList {
-//         Todos(Vec<Todo>),
-//         Nothing,
-//     }
-
-//     pub enum TodoEvent {
-//         TodoAddedEvent(String),
-//         TodosRemainingEvent(TodoList),
-//         TodosCompletedEvent(TodoList),
-//         TodosPurgedEvent(TodoList),
-//     }
-
-//     pub fn create(todos: &[&str]) -> TodoList {
-//         if todos.is_empty() {return TodoList::Nothing}
-//         let todos_vec = todos
-//             .iter()
-//             .enumerate()
-//             .map(|(index, item)| Todo(index, item.to_string()))
-//             .collect();
-//         TodoList::Todos(todos_vec)
-//     }
-
-//     pub fn value(Todo(_, item): Todo) -> String {item}
-//     pub fn index(Todo(index, _): Todo) -> usize {index}
-
-// }
-*/
-
 #[derive(Subcommand)]
 enum Commands {
     A { tasks: Vec<String> },
