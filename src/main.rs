@@ -41,6 +41,7 @@ mod done {
     }
 
     pub mod db {
+        use chrono::{DateTime, Utc};
         use sqlite::Connection;
 
         use super::CompletedItem;
@@ -55,6 +56,8 @@ mod done {
                 )";
 
         const SQL_INSERT_ITEM: &str = "INSERT INTO CompletedItems (CompletedOn, Item) VALUES (?, ?)";
+
+        const SQL_GET_ITEMS: &str = "SELECT Item, CompletedOn from CompletedItems WHERE CompletedOn > ?";
 
         pub fn new_connection(db_path: &str) -> Connection {
             return sqlite::open(db_path).expect(&format!("Should be able to open connection to db file at {}", db_path));
@@ -82,6 +85,24 @@ mod done {
                 .map(|ci| insert_item(&connection, ci))
                 .filter_map(|r| r.err())
                 .collect::<Vec<_>>()
+                ;
+        }
+
+        pub fn get(connection: &Connection, completed_since: DateTime<Utc>) -> Vec<CompletedItem> {
+            return connection
+                .prepare(SQL_GET_ITEMS)
+                .unwrap()
+                .into_iter()
+                .bind((1, completed_since.to_rfc3339().as_str()))
+                .unwrap()
+                .filter_map(|row| row.ok())
+                .map(
+                    |row| CompletedItem {
+                        completed: row.read::<&str, _>("CompletedOn").parse::<DateTime<Utc>>().expect(&format!("Should be able to parse '{}' to DateTime<Utc>", row.read::<&str, _>("CompletedOn"))),
+                        item: row.read::<&str, _>("Item").to_string()
+                    }
+                )
+                .collect()
                 ;
         }
     }
