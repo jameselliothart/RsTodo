@@ -79,10 +79,10 @@ mod done {
             Ok(())
         }
 
-        pub fn save(connection: Connection, completed_items: Vec<CompletedItem>) -> Vec<sqlite::Error> {
+        pub fn save(connection: &Connection, completed_items: Vec<CompletedItem>) -> Vec<sqlite::Error> {
             return completed_items
                 .iter()
-                .map(|ci| insert_item(&connection, ci))
+                .map(|ci| insert_item(connection, ci))
                 .filter_map(|r| r.err())
                 .collect::<Vec<_>>()
                 ;
@@ -202,7 +202,9 @@ struct Cli {
 }
 
 fn main() {
-    let path = Path::new("./done.txt");
+    // let path = Path::new("./done.txt");
+    let connection = done::db::new_connection(done::db::DB_PATH);
+    done::db::initialize(&connection);
     let cli = Cli::parse();
     match &cli.command {
         Commands::A { tasks } => {
@@ -210,18 +212,18 @@ fn main() {
                 .iter()
                 .map(|i| done::CompletedItem::now(i.to_string()))
                 .collect();
-            done::file::save(path, items)
+            done::db::save(&connection, items);
         }
         Commands::D { days } => {
             let completed_since = done::days_ago(Utc::now(), *days);
-            done::file::get(path, completed_since)
+            done::db::get(&connection, completed_since)
                 .iter()
                 .map(|x| x.to_string())
                 .for_each(|item| println!("{}", item));
         }
         Commands::W { weeks } => {
             let completed_since = done::weeks_ago(Utc::now(), *weeks);
-            done::file::get(path, completed_since)
+            done::db::get(&connection, completed_since)
                 .iter()
                 .map(|x| x.to_string())
                 .for_each(|item| println!("{}", item));
